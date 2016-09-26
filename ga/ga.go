@@ -1,14 +1,15 @@
 package ga
 
 import (
+	"log"
 	"math/rand"
 )
 
 // Species interace 封装了具体问题的通用接口
 type Species interface {
-	cross(Species) Species
-	mutate()
-	fitness() float64
+	Cross(Species) Species
+	Mutate() Species
+	Fitness() float64
 }
 
 // GeneticAlgorithm 遗传算法
@@ -38,12 +39,12 @@ func NewGeneticAlgorithm(generationSize int, crossRate, mutationRate float32, po
 	}
 }
 
-func (ga GeneticAlgorithm) rounds() float64 {
+func (ga *GeneticAlgorithm) rounds() float64 {
 	var rounds = 0.0
 	ga.bestSpecies = ga.population[0]
 	for index := range ga.population {
-		rounds += ga.population[index].fitness()
-		if ga.bestSpecies.fitness() < ga.population[index].fitness() {
+		rounds += ga.population[index].Fitness()
+		if ga.bestSpecies.Fitness() < ga.population[index].Fitness() {
 			ga.bestSpecies = ga.population[index]
 		}
 	}
@@ -53,7 +54,7 @@ func (ga GeneticAlgorithm) rounds() float64 {
 func (ga GeneticAlgorithm) getParent(rounds float64) Species {
 	rate := rand.Float64() * rounds
 	for _, species := range ga.population {
-		rate -= species.fitness()
+		rate -= species.Fitness()
 		if rate <= 0 {
 			return species
 		}
@@ -62,22 +63,23 @@ func (ga GeneticAlgorithm) getParent(rounds float64) Species {
 }
 
 func (ga GeneticAlgorithm) getChild(father, mather Species) (child Species) {
+	child = father
 	// 交叉
 	rate := rand.Float32()
 	if rate < ga.crossRate {
-		child = father.cross(mather)
+		child = father.Cross(mather)
 	}
 
 	// 突变
 	rate = rand.Float32()
 	if rate < ga.mutationRate {
-		child.mutate()
+		child = child.Mutate()
 	}
 	return child
 }
 
 // Evolution 进化演进
-func (ga *GeneticAlgorithm) Evolution() {
+func (ga *GeneticAlgorithm) Evolution() Species {
 	for i := 0; i < ga.generationSize; i++ {
 		var newPopulation []Species
 		// 对当前种群进行适应值计算
@@ -85,13 +87,19 @@ func (ga *GeneticAlgorithm) Evolution() {
 
 		// 精英选择优化，最好的物种基因尽可能往下一代传递
 		newPopulation = append(newPopulation, ga.bestSpecies)
-
 		// 进行新一代进化
-		for i := 0; i < len(ga.population); i++ {
+		count := 0
+		for count < len(ga.population) {
 			father := ga.getParent(rounds)
 			mather := ga.getParent(rounds)
-			newPopulation = append(newPopulation, ga.getChild(father, mather))
+			child := ga.getChild(father, mather)
+			if child != nil {
+				newPopulation = append(newPopulation, child)
+				count++
+			}
 		}
 		ga.population = newPopulation
+		log.Println(ga.bestSpecies.Fitness())
 	}
+	return ga.bestSpecies
 }

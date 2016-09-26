@@ -2,8 +2,14 @@ package tsp
 
 import (
 	"github.com/ybping/metaheuristics/ga"
+	"log"
 	"math"
 	"math/rand"
+)
+
+// const arguments
+const (
+	INITSCORE = 0
 )
 
 // Species info
@@ -16,61 +22,60 @@ type Species struct {
 
 func newSpecies(cityCount int) Species {
 	// 随机生成一个初始解
-	var cityOrder []int
+	cityOrder := rand.Perm(cityCount)
 	for i := 0; i < cityCount; i++ {
-		cityOrder = append(cityOrder, rand.Intn(cityCount))
+		idx := rand.Intn(cityCount)
+		cityOrder[i], cityOrder[idx] = cityOrder[idx], cityOrder[i]
 	}
 	return Species{
 		cityOrder: cityOrder,
 		cityCount: cityCount,
-		score:     -1,
+		score:     INITSCORE,
 	}
 
 }
 
-func (s *Species) cross(t Species) Species {
+// Cross ...
+func (s Species) Cross(ts ga.Species) ga.Species {
 	leftPos := rand.Intn(s.cityCount)
 	rightPos := rand.Intn(s.cityCount)
 	if leftPos > rightPos {
 		leftPos, rightPos = rightPos, leftPos
 	}
-	cityOrder := s.cityOrder[0:leftPos]
-	cityOrder = append(cityOrder, t.cityOrder[leftPos:rightPos]...)
-	cityOrder = append(cityOrder, s.cityOrder[rightPos:s.cityCount]...)
-	existed := make(map[int]bool)
-	for _, v := range cityOrder[leftPos:rightPos] {
-		existed[v] = true
+	t, hash := ts.(*Species), make(map[int]bool)
+	for _, v := range t.cityOrder[leftPos:rightPos] {
+		hash[v] = true
 	}
-	for k, v := range cityOrder {
-		if existed[v] == true {
-			if k < leftPos || k >= rightPos {
-				for _, v1 := range t.cityOrder {
-					if existed[v1] == false {
-						cityOrder[k] = v1
-						existed[v1] = true
-					}
-				}
-			}
+	var cityOrder []int
+	var index = 0
+	for _, v := range s.cityOrder {
+		if index == leftPos {
+			cityOrder = append(cityOrder, t.cityOrder[leftPos:rightPos]...)
+			index++
+		}
+		if _, ok := hash[v]; !ok {
+			cityOrder = append(cityOrder, v)
+			index++
 		}
 	}
-	return Species{
+	return &Species{
 		cityOrder: cityOrder,
 		cityCount: s.cityCount,
-		score:     -1,
+		score:     INITSCORE,
 		tsp:       s.tsp,
 	}
 }
 
-func (s *Species) mutate() {
+// Mutate ...
+func (s Species) Mutate() ga.Species {
 	first, second := rand.Intn(s.cityCount), rand.Intn(s.cityCount)
 	s.cityOrder[first], s.cityOrder[second] = s.cityOrder[second], s.cityOrder[first]
+	return &s
 }
 
-func (s *Species) fitness() float64 {
-	if s.score == -1 {
-		s.score = s.tsp.fitness(*s)
-	}
-	return s.score
+// Fitness ...
+func (s Species) Fitness() float64 {
+	return s.tsp.fitness(s)
 }
 
 // City info
@@ -88,16 +93,16 @@ type TSP struct {
 
 // NewTSP return tsp
 func NewTSP(cities []City) *TSP {
-	tsp := &TSP{}
+	tsp := &TSP{cities: cities}
 
 	// init specices
 	var population []ga.Species
 	for i := 0; i < 100; i++ {
 		species := newSpecies(len(cities))
 		species.tsp = tsp
-		population = append(population, species)
+		population = append(population, &species)
+		//	log.Println(species.cityOrder, species.Fitness())
 	}
-
 	// init tsp
 	tsp.ga = ga.NewGeneticAlgorithm(100, 0.7, 0.02, population)
 	return tsp
@@ -125,5 +130,7 @@ func (tsp TSP) fitness(s Species) float64 {
 
 // Solve start to solve tsp
 func (tsp TSP) Solve() {
-	tsp.ga.Evolution()
+	log.Println("Start TSP")
+	bestSpecies := tsp.ga.Evolution()
+	log.Println(bestSpecies.(*Species).cityOrder)
 }
