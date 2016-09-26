@@ -6,8 +6,8 @@ import (
 
 // Species interace 封装了具体问题的通用接口
 type Species interface {
-	cross(species Species) Species
-	mutate() Species
+	cross(Species) Species
+	mutate()
 	fitness() float64
 }
 
@@ -28,7 +28,7 @@ type GeneticAlgorithm struct {
 }
 
 // NewGeneticAlgorithm 返回一个遗传算法实例
-func NewGeneticAlgorithm(population []Species, generationSize int, crossRate, mutationRate float32) *GeneticAlgorithm {
+func NewGeneticAlgorithm(generationSize int, crossRate, mutationRate float32, population []Species) *GeneticAlgorithm {
 	return &GeneticAlgorithm{
 		population:     population,
 		populationSize: len(population),
@@ -71,7 +71,7 @@ func (ga GeneticAlgorithm) getChild(father, mather Species) (child Species) {
 	// 突变
 	rate = rand.Float32()
 	if rate < ga.mutationRate {
-		child = child.mutate()
+		child.mutate()
 	}
 	return child
 }

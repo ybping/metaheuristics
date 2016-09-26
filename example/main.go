@@ -27,5 +27,6 @@ func main() {
 		}
 		cities = append(cities, city)
 	}
-	log.Println(cities)
+	tspInstance := tsp.NewTSP(cities)
+	tspInstance.Solve()
 }
